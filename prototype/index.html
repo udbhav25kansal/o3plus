@@ -399,12 +399,163 @@
     font-weight: 600;
     pointer-events: none;
   }
+
+  /* Mobile menu button (hidden on desktop) */
+  .mobile-menu-btn {
+    display: none;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 18px;
+    cursor: pointer;
+    margin-right: 10px;
+  }
+
+  .sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 998;
+  }
+
+  /* ==================== MOBILE / RESPONSIVE ==================== */
+  @media (max-width: 900px) {
+    body {
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100vh;
+      width: 240px;
+      transform: translateX(-100%);
+      transition: transform 0.25s ease;
+      z-index: 999;
+    }
+    .sidebar.open { transform: translateX(0); }
+
+    .sidebar-overlay.visible { display: block; }
+
+    .main { width: 100%; }
+
+    .guide-bar {
+      padding: 10px 14px;
+      font-size: 11px;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .guide-bar > div:first-child {
+      display: flex;
+      align-items: center;
+      flex: 1;
+      min-width: 0;
+    }
+    .guide-step { display: block; font-size: 10px; opacity: 0.85; }
+    .guide-bar strong { font-size: 12px; }
+
+    .mobile-menu-btn {
+      display: inline-block;
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.3);
+      color: #fff;
+      font-size: 16px;
+      padding: 4px 10px;
+    }
+
+    .content { padding: 14px; }
+
+    .page-header h1 { font-size: 17px; }
+    .page-header p { font-size: 11.5px; }
+
+    .metrics {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+    .metric { padding: 10px 12px; }
+    .metric-value { font-size: 17px; }
+    .metric-label { font-size: 9.5px; }
+    .metric-sub { font-size: 10px; }
+
+    .cols, .cols-3 {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    .card { padding: 14px; }
+
+    /* Horizontal scroll for wide tables */
+    .card table,
+    table {
+      font-size: 11px;
+      display: block;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+    th, td { padding: 6px 8px; }
+
+    /* Flow diagrams: wrap & scroll */
+    .flow {
+      overflow-x: auto;
+      flex-wrap: nowrap;
+      justify-content: flex-start;
+      padding: 12px 10px;
+    }
+    .flow-node {
+      min-width: 90px;
+      font-size: 10px;
+      padding: 6px 10px;
+      flex-shrink: 0;
+    }
+
+    /* Push-pull diagram: stack */
+    .pp-diagram {
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 14px;
+    }
+    .pp-satellite { width: 90px; font-size: 10px; padding: 8px 10px; }
+    .pp-center { min-width: 120px; padding: 12px 14px; font-size: 11px; }
+
+    /* Aging strip readable */
+    .aging-strip { height: 24px; }
+    .aging-strip div { font-size: 8px; }
+
+    /* Bar rows */
+    .bar-label { width: 90px; font-size: 10px; }
+    .bar-value { width: 80px; font-size: 10px; }
+
+    /* Tabs */
+    .tabs { overflow-x: auto; white-space: nowrap; }
+    .tab { padding: 7px 12px; font-size: 11px; flex-shrink: 0; }
+
+    /* Walkthrough hint */
+    .walkthrough-hint { font-size: 11px; padding: 9px 12px; }
+
+    .watermark { font-size: 8px; bottom: 6px; right: 8px; }
+
+    .guide-btn { padding: 4px 10px; font-size: 10px; }
+  }
+
+  @media (max-width: 480px) {
+    .metrics { grid-template-columns: 1fr 1fr; }
+    .guide-nav { gap: 5px; }
+    .guide-btn { padding: 4px 8px; font-size: 9.5px; }
+    .page-header h1 { font-size: 16px; }
+  }
 </style>
 </head>
 <body>
 
+<!-- Mobile overlay -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar(false)"></div>
+
 <!-- Sidebar -->
-<nav class="sidebar">
+<nav class="sidebar" id="sidebar">
   <div class="sidebar-logo">O3<span>+</span> Command Centre</div>
 
   <div class="sidebar-section">Overview</div>
@@ -466,8 +617,11 @@
   <!-- Guide bar -->
   <div class="guide-bar">
     <div>
-      <strong>Prototype Walkthrough</strong>
-      <span class="guide-step" id="guideStep"> — Step 1 of 12: Executive Dashboard</span>
+      <button class="mobile-menu-btn" onclick="toggleSidebar()" aria-label="Menu">&#9776;</button>
+      <div>
+        <strong>Prototype Walkthrough</strong>
+        <span class="guide-step" id="guideStep"> — Step 1 of 12: Executive Dashboard</span>
+      </div>
     </div>
     <div class="guide-nav">
       <button class="guide-btn" id="prevBtn" onclick="prevScreen()">&#8592; Previous</button>
@@ -1330,6 +1484,16 @@
     document.querySelectorAll('.sidebar-item')[idx].classList.add('active');
     document.getElementById('guideStep').textContent = ' \u2014 Step ' + (idx+1) + ' of ' + screens.length + ': ' + screenNames[idx];
     document.querySelector('.content').scrollTop = 0;
+    // Auto-close sidebar on mobile after selection
+    if (window.innerWidth <= 900) toggleSidebar(false);
+  }
+
+  function toggleSidebar(force) {
+    const sb = document.getElementById('sidebar');
+    const ov = document.getElementById('sidebarOverlay');
+    const open = (force === undefined) ? !sb.classList.contains('open') : force;
+    sb.classList.toggle('open', open);
+    ov.classList.toggle('visible', open);
   }
 
   function nextScreen() { if (current < screens.length - 1) showScreen(current + 1); }
